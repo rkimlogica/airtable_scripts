@@ -8,70 +8,74 @@ var dateStr = date.toLocaleString('en-US', {
     timeZone: 'CST',
   });
   //console.log(dateStr);
-
+const startTime = new Date();
 
 let inputConfig = input.config();
 let table = base.getTable("TRIAGE/Report Dashboard");
-let query = await table.selectRecordsAsync({fields: ['Report Name','Client Request "Deliverable Specifics"','Total Page Count (Check for Additional Records)',
-    'Plaintiff Page Count (Check for Additional Records)','Expert','Requestor Firm from Intake','Client Invoice Product','Taxonomy for Reporting Metrics',
-    'Calculated Additional Page Fee','Invoice Client Override','Invoice Expert Override',
-    '# X-Ray Reviewed',
-    '# MRIs/CT Reviewed',
-    //'X-Ray Received Rollup',
-    //'MRI/CT Received Rollup',
-    'Binder pg Count Rollup','Duplicate pg Count Rollup','Submitted pg Count rollup',
-    'Hospital Facilities - Billing/Coding',
-    'Non-Hospital Facilities - Billing/Coding',
-    'Expert Time Spent',
-    'Depo Expert Prep Time Spent',
-    '>1 Plaintiffs',
-    'Initial Due Date (Client Request)','Date Client Approved Estimate',
-    'IME # of Body Parts >1',
-    'Invoice Task & Status',
-    'Network for Billing',
-    "Hourly Rate Client"
-    ],});
+// let query = await table.selectRecordsAsync({fields: ['Report Name','Client Request "Deliverable Specifics"','Total Page Count (Check for Additional Records)',
+//     'Plaintiff Page Count (Check for Additional Records)','Expert','Requestor Firm from Intake','Client Invoice Product','Taxonomy for Reporting Metrics',
+//     'Calculated Additional Page Fee','Invoice Client Override','Invoice Expert Override',
+//     '# X-Ray Reviewed',
+//     '# MRIs/CT Reviewed',
+//     //'X-Ray Received Rollup',
+//     //'MRI/CT Received Rollup',
+//     'Binder pg Count Rollup','Duplicate pg Count Rollup','Submitted pg Count rollup',
+//     'Hospital Facilities - Billing/Coding',
+//     'Non-Hospital Facilities - Billing/Coding',
+//     'Expert Time Spent',
+//     'Depo Expert Prep Time Spent',
+//     '>1 Plaintiffs',
+//     'Initial Due Date (Client Request)','Date Client Approved Estimate',
+//     'IME # of Body Parts >1',
+//     'Invoice Task & Status',
+//     'Network for Billing',
+//     "Hourly Rate Client"
+//     ],});
 let airtableRecordId = inputConfig.airtableRecordId;
 let invoicingDuplicateComment = inputConfig.invoicingDuplicateComment;
 let duplicatePageCount = inputConfig.duplicatePageCount;
 let numFacToOpine = inputConfig.numFacToOpine;
 let trueServiceLine = inputConfig.trueServiceLine;
+let invoiceTaskStatusName = inputConfig.invoiceTaskStatusName;
 let isLLS = containsSubstring(trueServiceLine, 'LLS');
 console.log(trueServiceLine);
 console.log(`numFacToOpine: ${numFacToOpine}, isLLS: ${isLLS}`);
 
 let clientInvoiceProductsFld = table.getField('Client Invoice Product');
 console.log(`record ID is ${airtableRecordId}`);
-let record = query.getRecord(airtableRecordId);
+//let record = query.getRecord(airtableRecordId);
 //console.log(record);
-let invoiceClientOverride = record.getCellValue('Invoice Client Override');
-let invoiceExpertOverride = record.getCellValue('Invoice Expert Override');
-let reportName = record.getCellValue('Report Name');
+let invoiceClientOverride = inputConfig.invoiceClientOverride;
+let invoiceExpertOverride = inputConfig.invoiceExpertOverride;
+let reportName = inputConfig.reportName;
 console.log('Report Name: '+reportName);
 console.log('invoiceClientOverride: '+invoiceClientOverride);
-let clientRequest = record.getCellValue('Client Request "Deliverable Specifics"');
-let expert = record.getCellValueAsString('Expert');
-expert= removeDoubleQuotes(expert);
+let clientRequest = inputConfig.clientRequest;
+let expert = inputConfig.expert;
+let expertName = expert[0];
+let expertID = inputConfig.expertID[0]
+expertName= removeDoubleQuotes(expertName);
 console.log('Expert: '+expert);
-let clientLawFirm = record.getCellValueAsString('Requestor Firm from Intake');
+let clientLawFirm = inputConfig.clientLawFirm[0];
+let clientLawFirmID = inputConfig.clientLawFirmID[0];
 clientLawFirm= removeDoubleQuotes(clientLawFirm);
 console.log('Client Law Firm: '+clientLawFirm);
-let clientInvoiceProducts = record.getCellValue('Client Invoice Product');
-let expertSpecialty = record.getCellValueAsString('Taxonomy for Reporting Metrics');
-let numXrayReviewed = record.getCellValue('# X-Ray Reviewed');   
-let numMRICTReviewed = record.getCellValue('# MRIs/CT Reviewed');  
+let clientInvoiceProducts = inputConfig.clientInvoiceProducts;
+let expertSpecialty = inputConfig.expertSpecialty;
+let numXrayReviewed = inputConfig.numXrayReviewed;   
+let numMRICTReviewed = inputConfig.numMRICTReviewed
 let totImgReviewed = numXrayReviewed + numMRICTReviewed;  
-let numHospiFacBillCoding = record.getCellValue('Hospital Facilities - Billing/Coding');     
-let numNonHospiFacBillCoding = record.getCellValue('Non-Hospital Facilities - Billing/Coding'); 
-let numExpertHours = record.getCellValue('Expert Time Spent'); 
-let numDepoExpertPrepHours = record.getCellValue('Depo Expert Prep Time Spent'); 
-let numPlaintiffs = record.getCellValue('>1 Plaintiffs');
-let initialDueDate = record.getCellValue('Initial Due Date (Client Request)'); 
-let clientApprovedEstimateDate = record.getCellValue('Date Client Approved Estimate');
-let imeNumBodyPartsGtThan1 = record.getCellValue('IME # of Body Parts >1');
-let invoiceTaskStatusName = record.getCellValue('Invoice Task & Status').name;
-let networkForBillings = record.getCellValue('Network for Billing');
-let hourlyRateClient = record.getCellValue("Hourly Rate Client");
+let numHospiFacBillCoding = inputConfig.numHospiFacBillCoding;     
+let numNonHospiFacBillCoding = inputConfig.numNonHospiFacBillCoding; 
+let numExpertHours = inputConfig.numExpertHours; 
+let numDepoExpertPrepHours = inputConfig.numDepoExpertPrepHours; 
+let numPlaintiffs = parseInt(inputConfig.numPlaintiffs[0]);
+let initialDueDate = inputConfig.initialDueDate; 
+let clientApprovedEstimateDate = inputConfig.clientApprovedEstimateDate;
+let imeNumBodyPartsGtThan1 = inputConfig.imeNumBodyPartsGtThan1;
+//let invoiceTaskStatusName = record.getCellValue('Invoice Task & Status').name;
+let networkForBillings = inputConfig.networkForBillings;
+let hourlyRateClient = inputConfig.hourlyRateClient[0];
 let isExpertHourly = false;
 let isComplexCase = false;
 let isComplexHourly = false;
@@ -122,17 +126,17 @@ if(rushDueDateInBizDays<0){
     console.log('The dates for Rush date calculation are invalid. '+clientApprovedEstimateDate+' | ' + initialDueDate);
 }
 await table.updateRecordAsync(
-    record, {'Client Rush Due Date - Date Estimate Approved in Business Days': rushDueDateInBizDays}
+    airtableRecordId, {'Client Rush Due Date - Date Estimate Approved in Business Days': rushDueDateInBizDays}
 );
 
 //page counts
-let totPageCountAddtlRec = record.getCellValue('Total Page Count (Check for Additional Records)');
-let plaintiffPageCountAddtlRec = record.getCellValue('Plaintiff Page Count (Check for Additional Records)');
+let totPageCountAddtlRec = inputConfig.totPageCountAddtlRec;
+let plaintiffPageCountAddtlRec = inputConfig.plaintiffPageCountAddtlRec;
 if (plaintiffPageCountAddtlRec == null){
     plaintiffPageCountAddtlRec=0;
 }
-let submittedPgRollup =record.getCellValue('Submitted pg Count rollup');
-let binderPgRollup =record.getCellValue('Binder pg Count Rollup');
+let submittedPgRollup = inputConfig.submittedPgRollup;
+let binderPgRollup =inputConfig.binderPgRollup;
 
 // combing with rollup for additional record processing calculations
 let totPageCount = totPageCountAddtlRec+ submittedPgRollup;
@@ -145,7 +149,7 @@ let isImgReRead = false;
 let isImgingOnly = true;
 if(clientInvoiceProducts != null && clientInvoiceProducts.length >0 ){
     for (let invoiceProduct of clientInvoiceProducts){
-        let invoiceProductName = invoiceProduct.name;
+        let invoiceProductName = invoiceProduct;
         if (invoiceProductName.includes("Radiologist Re-Read Report") ||
             invoiceProductName.includes("Radiologist - Expert Causality Review")){
             isImgReRead = true;
@@ -312,16 +316,13 @@ async function calculateExpertInvoice(){
             'MDJW Testimony Half Day - 4 Hrs',
             'MDJW Court Testimony - Full Day - > 8 Hrs',
             'MDJW Certified Coding Specialist - CA/Billing Only - Per Hospital Facility',
+            'Fee/Payment Agreement Details',
             ],
         });
 
         // find the matching Law Firm record
-        for (let record of queryLogicaExperts.records) {
-            //console.log('record.name: '+record.name);
-            //console.log('record.id: '+record.id);
-            //console.log(expert);
-            if( record.name === expert){
-                logicaExpertRecord = record;
+        logicaExpertRecord = queryLogicaExperts.getRecord(expertID);
+
                 console.log('matching Expert found: '+expert);
                 // law firm level variables
                 //extra100PageFee = logicaExpertRecord.getCellValue('Non-Spine - Additional Pages - Per 100 pages');
@@ -332,28 +333,36 @@ async function calculateExpertInvoice(){
                 console.log('basePageCount: '+basePageCount);
                 basePageCountCOH = logicaExpertRecord.getCellValue('COH Base Page Count');
                 pagesPerAddlSet = logicaExpertRecord.getCellValue('Pages per Additional Set');
+                if(pagesPerAddlSet <1){
+                    pagesPerAddlSet =100;
+                }
                 pagesPerAddlSetCOH = logicaExpertRecord.getCellValue('COH Pages per Additional Set');
+                if(pagesPerAddlSetCOH <1){
+                    pagesPerAddlSetCOH =100;
+                }
                 invoiceImgMRICT = logicaExpertRecord.getCellValue('Imaging - MRI/CT');
                 invoiceImgXRay = logicaExpertRecord.getCellValue('Imaging - X-Ray');
                 invoiceRadiologyReRead = logicaExpertRecord.getCellValue('Radiologist Re-Read Report');
-                break;
-            }
-        }
 
         // calculate totals
         if(logicaExpertRecord != null){
+            let feePaymentAgrmtDetail = logicaExpertRecord.getCellValue('Fee/Payment Agreement Details');
+            let isPayAgrmtMDJWSigned = containsWordIgnoreCase(feePaymentAgrmtDetail, "MDJW")
+            console.log(`is LLS ${isLLS}, isPayAgrmtMDJWSigned ${isPayAgrmtMDJWSigned}`)
+            if(isLLS && !isPayAgrmtMDJWSigned){
+                writeToExpertInvoiceExplain(`- LLS, NO PaymentAgreement for this Expert`)
+            }
+
             for (let invoiceProduct of clientInvoiceProducts){
-                let invoiceProductName = invoiceProduct.name;
+                let invoiceProductName = invoiceProduct;
                 console.log('calculating invoice products except additional pages');
                 console.log(invoiceProductName);
 
-                // if LLS, we need to override the client invoice product for LLS.
-                console.log(`is LLS ${isLLS}`)
-                if(isLLS){
+                // if LLS and Expert has Fee Payment Agreement in place, we need to override the client invoice product for LLS.
+                if(isLLS && isPayAgrmtMDJWSigned){
                     invoiceProductName = appendMDJWPrefix(invoiceProductName);
                     console.log(`LLS. Invoice product overridden: ${invoiceProductName}`);
                 }
-                
                 // determine if additinoal page calculation should be skipped
                 // 'Chronology or Record Processing Fee Per page' skips both page counts and expert pay 
                 if(skipAddtlPageCalc === false && (invoiceProductName.includes("Billing Only") 
@@ -530,6 +539,7 @@ async function calculateExpertInvoice(){
                 */
                 if (invoiceProductName.includes("Deposition Additional Claimant")){
                     let amount = logicaExpertRecord.getCellValue(invoiceProductName);
+                    // @ts-ignore
                     let subtotal = amount * (numPlaintiffs-1); 
                     writeToExpertInvoiceExplain('- PayItem: '+invoiceProductName+' $'+amount+'/claiment |Addtl Plaintiffs: '+(numPlaintiffs-1)+' | subtotal $'+subtotal);
                     totalLogicaExpertInvoiceAmount = totalLogicaExpertInvoiceAmount+subtotal;
@@ -566,7 +576,8 @@ async function calculateExpertInvoice(){
                     ||invoiceProductName.includes("Court Testimony Spine Full Day - >8 hrs")
                     ||invoiceProductName.includes("Court Testimony Certified Coder Full Day - >8 hrs")
                     ||invoiceProductName.includes("Court Testimony Ortho,Pain,ER Full Day - >8 hrs")
-                    ||invoiceProductName.includes("Court Testimony Radiologist Full Day - >8 hrs")){
+                    ||invoiceProductName.includes("Court Testimony Radiologist Full Day - >8 hrs")
+                    ||invoiceProductName.includes("Court Testimony Rare Specialty Full Day - >8 hrs")){
                     let amount = logicaExpertRecord.getCellValue("Court Testimony - Full Day - >8 hrs");
                     writeToExpertInvoiceExplain('- PayItem: Court Testimony - Full Day - >8 hrs | $'+amount);
                     totalLogicaExpertInvoiceAmount = totalLogicaExpertInvoiceAmount+amount;
@@ -678,7 +689,7 @@ async function calculateExpertInvoice(){
     writeToExpertInvoiceExplain('Total Expert: $'+totalLogicaExpertInvoiceAmount);
     // update record
     await table.updateRecordAsync(
-        record, {'Calculated Expert Invoice Amount': totalLogicaExpertInvoiceAmount, 'Expert Invoice Explain':expertInvoiceExplain}
+        airtableRecordId, {'Calculated Expert Invoice Amount': totalLogicaExpertInvoiceAmount, 'Expert Invoice Explain':expertInvoiceExplain}
     );
 }//end main function
 
@@ -790,6 +801,7 @@ async function calculateClientInvoice(){
                 'Court Testimony Certified Coder Full Day - >8 hrs',
                 'Court Testimony Radiologist Half Day - 4hrs',
                 'Court Testimony Radiologist Full Day - >8 hrs',
+                'Court Testimony Rare Specialty Full Day - >8 hrs',
                 'Physician IME Exam - One Body Part',
                 'Spine IME Exam - One Body Part',
                 'Indexing + Summary/Narrative Fee Per page',
@@ -816,12 +828,13 @@ async function calculateClientInvoice(){
         });
 
         // find the matching Law Firm record
-        for (let record of queryClientLawfirms.records) {
-            //console.log('record.name: '+record.name);
-            //console.log('record.id: '+record.id);
-            //console.log(clientLawFirm);
-            if( record.name === clientLawFirm){
-                clientLawFirmRecord = record;
+        clientLawFirmRecord = queryClientLawfirms.getRecord(clientLawFirmID);
+        // for (let record of queryClientLawfirms.records) {
+        //     //console.log('record.name: '+record.name);
+        //     //console.log('record.id: '+record.id);
+        //     //console.log(clientLawFirm);
+        //     if( record.name === clientLawFirm){
+                // clientLawFirmRecord = record;
                 console.log('matching law firm found: '+clientLawFirm);
                 // law firm level variables
                 extra100PageFee = clientLawFirmRecord.getCellValue('Non-Spine - Additional Pages');
@@ -837,14 +850,14 @@ async function calculateClientInvoice(){
                 numBaseFacilityCount = clientLawFirmRecord.getCellValue('Base Facilities (Billing-Only)');
                 clientScheduleType = clientLawFirmRecord.getCellValue('Client Schedule Type').name;
                 console.log(`clientScheduleType is ${clientScheduleType}`);
-                break;
-            }
-        }
+        //         break;
+        //     }
+        // }
 
         // calculate totals
         if(clientLawFirmRecord != null){
             for (let invoiceProduct of clientInvoiceProducts){
-                let invoiceProductName = invoiceProduct.name;
+                let invoiceProductName = invoiceProduct;
                 console.log('calculating invoice products except additional pages');
                 console.log(invoiceProductName);
                 
@@ -874,6 +887,7 @@ async function calculateClientInvoice(){
                 if(isLLS && 
                     (invoiceProductName.includes("Physician -CA/Billing Only")
                     || invoiceProductName.includes("Chiro-CA/Billing Only")
+                    || invoiceProductName.includes("Radiologist-CA/Billing Only")
                     || invoiceProductName.includes("Spine -CA/Billing Only"))
                     ){
                     let amount = clientLawFirmRecord.getCellValue(invoiceProductName)*numFacToOpine;
@@ -1137,7 +1151,7 @@ async function calculateClientInvoice(){
                 });
                 writeToInvoiceExplain('- Extra page Spine [#Tot|#base|#extra|$extraFee|$totFee] '
                     +totPageCount+'|'+ basePageCount +'|'+ additionalPages +'|$'+extra100PageFeeSpine+'/'+pagesPerAddlSet+'pg|$'+additionalPageFee);
-            } else if (expertSpecialty.includes("Chiro") ){
+            } else if (expertSpecialty.includes("Chiro") || expertSpecialty.includes("Physical Therapy")){
                 multiple = Math.ceil(additionalPages / 100);
                 additionalPageFee = extra100PageFeeChiro * (multiple);
                 updatedInvoiceProductList.push({
@@ -1192,7 +1206,7 @@ async function calculateClientInvoice(){
     writeToInvoiceExplain('Total INVOICE: $'+totalClientLawFirmInvoiceAmount);
     // update record
     await table.updateRecordAsync(
-        record, {'Calculated Invoice Amount': totalClientLawFirmInvoiceAmount,'Calculated Additional Page Fee':additionalPageFee, 'Client Invoice Explain':clientInvoiceExplain}
+        airtableRecordId, {'Calculated Invoice Amount': totalClientLawFirmInvoiceAmount,'Calculated Additional Page Fee':additionalPageFee, 'Client Invoice Explain':clientInvoiceExplain}
     );
 }//end main function
 async function updateClientInvoiceProducts(){
@@ -1204,13 +1218,13 @@ async function updateClientInvoiceProducts(){
     // we need to make sure to add the product for additional page
     // combine existing invoice product and additinal page count
     for(let item of clientInvoiceProducts){
-        if(item.name !== 'Non-Spine - Additional Pages' 
-        && item.name !== 'Spine - Additional Pages'
-        && item.name !== 'Additional pages over 250 per 250'
-        && item.name !== 'Chiro - Additional Pages'
+        if(item !== 'Non-Spine - Additional Pages' 
+        && item !== 'Spine - Additional Pages'
+        && item !== 'Additional pages over 250 per 250'
+        && item !== 'Chiro - Additional Pages'
         ){
             updatedInvoiceProductList.push({
-                name: item.name, 
+                name: item, 
                 //color: item.color 
             });
         }
@@ -1218,7 +1232,7 @@ async function updateClientInvoiceProducts(){
     console.log(updatedInvoiceProductList);
     // update record
     await table.updateRecordAsync(
-        record, {'Client Invoice Product': updatedInvoiceProductList}
+        airtableRecordId, {'Client Invoice Product': updatedInvoiceProductList}
     );
     console.log('updated Invoice Product List: ');
     console.log(updatedInvoiceProductList);
@@ -1324,11 +1338,11 @@ function calcNumOfWorkingDays(fromDate1, endDate1) {
 }
 
 function removeByName(itemName){
-    let isContain = clientInvoiceProducts.find(x => x.name === itemName);
+    let isContain = clientInvoiceProducts.find(x => x === itemName);
     let newclientInvoiceProducts =[];
     if(isContain !== undefined){
         for(let item of clientInvoiceProducts){
-            if(item.id !== itemName ){
+            if(item !== itemName ){
                 newclientInvoiceProducts.push(item);
             }
         }
@@ -1350,6 +1364,19 @@ function containsSubstring(array, substring) {
     return false; 
   }
   
+}
+function containsWordIgnoreCase(mainString, wordToFind) {
+  // Ensure both inputs are strings and handle potential null/undefined
+  if (typeof mainString !== 'string' || typeof wordToFind !== 'string') {
+    return false;
+  }
+
+  // Convert both strings to lowercase for case-insensitive comparison
+  const lowerCaseMainString = mainString.toLowerCase();
+  const lowerCaseWord = wordToFind.toLowerCase();
+
+  // Check if the lowercased main string includes the lowercased word
+  return lowerCaseMainString.includes(lowerCaseWord);
 }
 function appendMDJWPrefix(inputString) {
     console.log(`input string: ${inputString} `);
@@ -1392,6 +1419,7 @@ function appendMDJWPrefix(inputString) {
   if (targetStrings.includes(inputString)) {
     return "MDJW " + inputString;
   } else {
+      console.log(`No MDJW Prefix applied since there were no matching product Item.`)
     return inputString; // Return the original string if it's not in the list
   }
 }
