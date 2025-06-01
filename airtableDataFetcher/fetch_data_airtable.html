@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airtable Data Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Adding a bit more padding to table cells */
+        th, td {
+            padding: 12px 15px;
+        }
+        /* Style for the loading message and error message */
+        .status-message {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+            border-radius: 8px;
+        }
+        .loading {
+            background-color: #e0f2fe; /* Light blue */
+            color: #0c4a6e; /* Dark blue */
+        }
+        .error {
+            background-color: #ffe4e6; /* Light pink */
+            color: #b91c1c; /* Dark red */
+        }
+        /* Simple card style for each record if not using a table */
+        .record-card {
+            background-color: white;
+            border: 1px solid #e5e7eb; /* Tailwind gray-200 */
+            border-radius: 0.5rem; /* Tailwind rounded-lg */
+            padding: 1rem; /* Tailwind p-4 */
+            margin-bottom: 1rem; /* Tailwind mb-4 */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* Tailwind shadow-md */
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800 p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-2xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-sky-700">Airtable Data</h1>
+            <p class="text-gray-600 mt-2">Displaying records from an Airtable view.</p>
+        </header>
+
+        <div class="mb-6 p-4 bg-sky-50 border border-sky-200 rounded-lg">
+            <h2 class="text-xl font-semibold text-sky-600 mb-3">Airtable Configuration</h2>
+            <p class="text-sm text-gray-700 mb-4">
+                Enter your Airtable details below.
+                <strong>Important:</strong> Never expose your API key in a public website. For production, use a backend proxy.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="apiKey" class="block text-sm font-medium text-gray-700">API Key:</label>
+                    <input type="password" id="apiKey" name="apiKey" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" placeholder="key...">
+                </div>
+                <div>
+                    <label for="baseId" class="block text-sm font-medium text-gray-700">Base ID:</label>
+                    <input type="text" id="baseId" name="baseId" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" placeholder="app...">
+                </div>
+                <div>
+                    <label for="tableName" class="block text-sm font-medium text-gray-700">Table Name (or ID):</label>
+                    <input type="text" id="tableName" name="tableName" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" placeholder="Your Table Name">
+                </div>
+                <div>
+                    <label for="viewId" class="block text-sm font-medium text-gray-700">View ID (Optional):</label>
+                    <input type="text" id="viewId" name="viewId" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" placeholder="viw... (optional)">
+                </div>
+            </div>
+            <button id="fetchButton" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">
+                Fetch Data
+            </button>
+        </div>
+
+        <div id="statusContainer" class="my-4"></div>
+
+        <div id="airtableDataContainer" class="overflow-x-auto">
+            </div>
+    </div>
+
+    <script>
+        // Get references to the input fields and button
+        const apiKeyInput = document.getElementById('apiKey');
+        const baseIdInput = document.getElementById('baseId');
+        const tableNameInput = document.getElementById('tableName');
+        const viewIdInput = document.getElementById('viewId'); // Optional
+        const fetchButton = document.getElementById('fetchButton');
+        const dataContainer = document.getElementById('airtableDataContainer');
+        const statusContainer = document.getElementById('statusContainer');
+
+        // --- Store and retrieve values from localStorage ---
+        // Load saved values when the page loads
+        apiKeyInput.value = localStorage.getItem('airtableApiKey') || '';
+        baseIdInput.value = localStorage.getItem('airtableBaseId') || '';
+        tableNameInput.value = localStorage.getItem('airtableTableName') || '';
+        viewIdInput.value = localStorage.getItem('airtableViewId') || '';
+
+
+        // Function to display status messages (loading, error)
+        function showStatusMessage(message, type = 'loading') {
+            statusContainer.innerHTML = `<div class="status-message ${type}">${message}</div>`;
+        }
+
+        // Function to clear status messages
+        function clearStatusMessage() {
+            statusContainer.innerHTML = '';
+        }
+
+        // Function to fetch and display Airtable data
+        async function fetchAirtableData() {
+            // Get values from input fields
+            const API_KEY = apiKeyInput.value.trim();
+            const BASE_ID = baseIdInput.value.trim();
+            const TABLE_NAME_OR_ID = tableNameInput.value.trim();
+            const VIEW_ID = viewIdInput.value.trim(); // Optional
+
+            // Validate inputs
+            if (!API_KEY || !BASE_ID || !TABLE_NAME_OR_ID) {
+                showStatusMessage('Please fill in API Key, Base ID, and Table Name.', 'error');
+                // Clear previous data if any
+                dataContainer.innerHTML = '<p class="text-center text-gray-500">Enter your Airtable details above and click "Fetch Data".</p>';
+                return;
+            }
+
+            // Save values to localStorage (excluding API key for minimal security, though still client-side)
+            localStorage.setItem('airtableBaseId', BASE_ID);
+            localStorage.setItem('airtableTableName', TABLE_NAME_OR_ID);
+            localStorage.setItem('airtableViewId', VIEW_ID);
+            // Consider if you really want to store the API key, even temporarily
+            // localStorage.setItem('airtableApiKey', API_KEY);
+
+
+            // Show loading message
+            showStatusMessage('Fetching data from Airtable...', 'loading');
+            dataContainer.innerHTML = ''; // Clear previous data
+
+            // Construct the Airtable API URL
+            // Documentation: https://airtable.com/developers/web/api/list-records
+            let airtableURL = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(TABLE_NAME_OR_ID)}`;
+
+            // If a View ID is provided, add it to the URL parameters
+            if (VIEW_ID) {
+                airtableURL += `?view=${encodeURIComponent(VIEW_ID)}`;
+            }
+            // You can add other parameters like maxRecords, pageSize, sort, filterByFormula etc.
+            // Example: airtableURL += (VIEW_ID ? '&' : '?') + 'maxRecords=10';
+
+            try {
+                const response = await fetch(airtableURL, {
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    let errorMessage = `Error fetching data: ${response.status} ${response.statusText}`;
+                    if (errorData && errorData.error && errorData.error.message) {
+                        errorMessage += ` - ${errorData.error.message}`;
+                    } else if (response.status === 401) {
+                        errorMessage = 'Error: Unauthorized. Please check your API Key.';
+                    } else if (response.status === 403 && errorData.error.type === "AUTHENTICATION_REQUIRED") {
+                        errorMessage = 'Error: Authentication required. Please check your API Key.';
+                    } else if (response.status === 404) {
+                        errorMessage = 'Error: Not Found. Please check your Base ID, Table Name/ID, or View ID.';
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+                clearStatusMessage(); // Clear loading message
+
+                if (data.records && data.records.length > 0) {
+                    renderDataAsTable(data.records);
+                } else {
+                    dataContainer.innerHTML = '<p class="text-center text-gray-500 p-4 bg-yellow-50 border border-yellow-300 rounded-md">No records found in this view, or the table is empty.</p>';
+                }
+
+            } catch (error) {
+                console.error('Airtable API Error:', error);
+                showStatusMessage(`Failed to load data. ${error.message}`, 'error');
+                dataContainer.innerHTML = ''; // Clear any partial data
+            }
+        }
+
+        // Function to render the data as an HTML table
+        function renderDataAsTable(records) {
+            if (!records || records.length === 0) {
+                dataContainer.innerHTML = '<p class="text-center text-gray-500">No records to display.</p>';
+                return;
+            }
+
+            // Create table element
+            const table = document.createElement('table');
+            table.className = 'min-w-full divide-y divide-gray-200 border border-gray-300 rounded-lg shadow-sm'; // Added border and shadow
+
+            // Create table header
+            const thead = document.createElement('thead');
+            thead.className = 'bg-sky-50'; // Light blue background for header
+            const headerRow = document.createElement('tr');
+
+            // Extract all unique field names for columns from the first record (can be improved)
+            // For simplicity, we'll use keys from the 'fields' object of the first record.
+            // Airtable might return fields in different orders or some records might miss fields.
+            // A more robust solution would be to iterate all records to find all unique field names.
+            const fields = Object.keys(records[0].fields);
+
+            // Add 'Record ID' as the first column header
+            const thId = document.createElement('th');
+            thId.className = 'px-6 py-3 text-left text-xs font-medium text-sky-700 uppercase tracking-wider';
+            thId.textContent = 'Record ID';
+            headerRow.appendChild(thId);
+
+
+            fields.forEach(fieldName => {
+                const th = document.createElement('th');
+                th.className = 'px-6 py-3 text-left text-xs font-medium text-sky-700 uppercase tracking-wider';
+                th.textContent = fieldName;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Create table body
+            const tbody = document.createElement('tbody');
+            tbody.className = 'bg-white divide-y divide-gray-200';
+
+            records.forEach(record => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50 transition-colors duration-150'; // Hover effect
+
+                // Add Record ID cell
+                const tdId = document.createElement('td');
+                tdId.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono';
+                tdId.textContent = record.id; // Airtable record ID
+                tr.appendChild(tdId);
+
+
+                fields.forEach(fieldName => {
+                    const td = document.createElement('td');
+                    td.className = 'px-6 py-4 whitespace-pre-wrap text-sm text-gray-700 break-words'; // Allow text wrapping
+                    let cellValue = record.fields[fieldName];
+
+                    // Handle different data types for display (basic examples)
+                    if (typeof cellValue === 'boolean') {
+                        cellValue = cellValue ? 'Yes' : 'No';
+                    } else if (Array.isArray(cellValue)) {
+                        // If it's an array (e.g., multiple select, linked records), join them
+                        // This might need more sophisticated handling for linked records if you want to display names instead of IDs
+                        cellValue = cellValue.join(', ');
+                    } else if (typeof cellValue === 'object' && cellValue !== null) {
+                        // For other objects (like attachments, collaborators), show a placeholder or stringify
+                        // For attachments, you might want to display file names or thumbnails
+                        if (cellValue.filename) { // Example for a single attachment object
+                            cellValue = cellValue.filename;
+                        } else if (cellValue.url) { // Another common pattern for attachments
+                             cellValue = cellValue.url.split('/').pop(); // try to get filename
+                        }
+                        else {
+                            cellValue = JSON.stringify(cellValue);
+                        }
+                    }
+                    // If a field is undefined or null for a record, display an empty string
+                    td.textContent = (cellValue === undefined || cellValue === null) ? '' : String(cellValue);
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+
+            // Append the table to the container
+            dataContainer.innerHTML = ''; // Clear previous content (like "No records")
+            dataContainer.appendChild(table);
+        }
+
+        // Add event listener to the fetch button
+        fetchButton.addEventListener('click', fetchAirtableData);
+
+        // Optionally, display a default message if no data is loaded initially
+        if (!dataContainer.innerHTML) {
+             dataContainer.innerHTML = '<p class="text-center text-gray-500 p-4">Enter your Airtable details above and click "Fetch Data".</p>';
+        }
+
+    </script>
+
+</body>
+</html>
