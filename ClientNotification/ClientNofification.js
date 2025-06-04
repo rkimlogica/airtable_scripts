@@ -33,14 +33,21 @@ console.log(triageIDList);
 let triageNameList = inputConfig.triageNameList;
 console.log(`triageNameList:`);
 console.log(triageNameList);
+let caseManager = inputConfig.caseManager;
+console.log(`caseManager:` );
+console.log(caseManager );
+let dueDate = inputConfig.dueDate;
+console.log(`dueDate:`);
+console.log(dueDate);
 
-let emailCaseInfo = `Thanks for sending this over. We recommend the following experts to opine on the treatment noted below for you. All designation materials are attached for your review. \n\n`+
- `**Case Style:** ${Case_Style}\n`+
-    `**Date of Loss:** ${Loss_Date}\n`+
-    `**Attorney Info:** \n`+
-    `${Attorney}\n`+
-    `${Requestor_Client_Law_Firm_from_Link_to_Intake_Case_Info}\n`+
-    `**Case Style ID: ${Case_Style} ${Logica_ID_from_Link_to_Intake_Case_Info}**\n\n`;
+let emailCaseInfo = `Hello,\nThanks for sending this over. We recommend the following experts to opine on the treatment noted below for you. All designation materials are attached for your review. \n\n`;
+//  `**Case Style:** ${Case_Style}\n`+
+//     `**Date of Loss:** ${Loss_Date}\n`+
+//     `**Attorney Info:** \n`+
+//     `${Attorney}\n`+
+//     `${Requestor_Client_Law_Firm_from_Link_to_Intake_Case_Info}\n`+
+//     `**Case Style ID: ${Case_Style} ${Logica_ID_from_Link_to_Intake_Case_Info}**`+
+//    `\n\n`;
 // we need to retrieve Triage report data for every reports
 // following for loop will create reports list.  We will sort by Plainfiff.
 let reportsList = [];
@@ -66,6 +73,7 @@ for (let i = 0; i < triageIDList.length; i++) {
       'Facilities to Opine-Future-Treatment',
       'Facilities to Opine-Causation',
       'Calculated Invoice Amount',
+      'CREDENTIALS',
     ],});
   let triageRecord = triageQuery.getRecord(triageId);
   let expertEmail = triageRecord.getCellValue('ExpertEmail');
@@ -75,7 +83,12 @@ for (let i = 0; i < triageIDList.length; i++) {
   let expert = triageRecord.getCellValue('Expert');
   console.log(expert);
   let expertLastName = getLastName(expert[0].name);
+  let expertName = expert[0].name;
   console.log(`expert name: ${expert}`);
+  let CREDENTIALList = triageRecord.getCellValue('CREDENTIALS');
+  let CREDENTIALS= joinStringsWithComma(CREDENTIALList);
+  console.log(`CREDENTIALS`);
+  console.log(CREDENTIALS);
   let Client_Request_Deliverable_Specifics = extractNamesUsingForOf(triageRecord.getCellValue('Client Request "Deliverable Specifics"'));
   console.log(`Client_Request_Deliverable_Specifics: ${Client_Request_Deliverable_Specifics}`);
   let Requested_Deliverable_Type_of_Work_Product = extractNamesUsingForOf(triageRecord.getCellValue('Requested Deliverable "Type of Work Product"'));
@@ -119,9 +132,9 @@ for (let i = 0; i < triageIDList.length; i++) {
 
 
   let emailBodyReport =
-    `**Expert Assigned** Dr. ${expertLastName},\n`+
-    `**Review Type:** ${Client_Request_Deliverable_Specifics}\n`+
-    `**Deliverable:** ${Requested_Deliverable_Type_of_Work_Product}\n`;
+    `**${convertLastNameFirstToFirstNameFirst(expertName)}, ${CREDENTIALS}**\n`+
+    `Review Type: ${Client_Request_Deliverable_Specifics}\n`+
+    `Deliverable: ${Requested_Deliverable_Type_of_Work_Product}\n`;
     // if numberedFacilitiesOpineMedNecessity is empty, we will not show it.
     if( numberedFacilitiesOpineMedNecessity !== '- N/A' && numberedFacilitiesOpineMedNecessity !== ''){
       emailBodyReport += `**Opining on medical necessity:**\n ${numberedFacilitiesOpineMedNecessity}\n`;
@@ -143,7 +156,8 @@ for (let i = 0; i < triageIDList.length; i++) {
       "Plaintiff_ID_Triage_Side": Plaintiff_ID_Triage_Side,
       "Plaintiff_Name_CAPS": Plaintiff_Name_CAPS,
       "expertLastName": expertLastName,
-      "emailBodyReport": emailBodyReport
+      "emailBodyReport": emailBodyReport,
+      "calculatedInvoiceAmt": calculatedInvoiceAmt,
     }
   );
 
@@ -154,10 +168,28 @@ sortReports(reportsList);
 // combine to email body
 
 let emailBody=emailCaseInfo;
+let plaintiffIDCurrent = '';
+let totalAmount = 0;
 for (let i = 0; i < reportsList.length; i++) {
   let report = reportsList[i];
-  emailBody += `**Plaintiff ID/Name: ${report.Plaintiff_ID_Triage_Side}-${report.Plaintiff_Name_CAPS}**\n`+report.emailBodyReport;
+  if(report.Plaintiff_ID_Triage_Side !== plaintiffIDCurrent){ 
+    // plaintiff id should be bold and underlined
+    emailBody += `**__${report.Plaintiff_ID_Triage_Side}-${report.Plaintiff_Name_CAPS}__**\n`
+    +report.emailBodyReport;
+  }else{
+    emailBody += report.emailBodyReport;
+  }
+  plaintiffIDCurrent = report.Plaintiff_ID_Triage_Side;
+  // if (i < reportsList.length - 1) {
+  //   emailBody += '\n'; // Add a newline between different reports
+  // } 
+  totalAmount += report.calculatedInvoiceAmt;
 }
+
+// append total amount to email body
+emailBody += `**Total Amount for all reports:** $${totalAmount}\n\n`;
+// append outro
+emailBody += `${caseManager[0]} is your case manager and will ensure we get the deliverables back by your ${dueDate} due date. Please let us know if you approve of the assignments and we will get started.\n\nThank you.`;
 
 
 let mailToLink = generateMailtoLink({
@@ -474,4 +506,65 @@ function sortReports(reportsList) {
     // If both primary and secondary keys are the same
     return 0;
   });
+}
+function joinStringsWithComma(arr) {
+  // Check if the input is an array
+  if (!Array.isArray(arr)) {
+    console.error("Input is not an array.");
+    return ""; // Or throw an error, depending on desired error handling
+  }
+
+  // Check if all elements are strings (optional, but good practice)
+  if (!arr.every(item => typeof item === 'string')) {
+    console.warn("Not all items in the array are strings. Attempting to join anyway.");
+  }
+
+  // Use the join() method to concatenate the strings with a comma
+  return arr.join(',');
+}
+function convertLastNameFirstToFirstNameFirst(fullNameWithLastFirst) {
+  // Check if the input is a string
+  if (typeof fullNameWithLastFirst !== 'string') {
+    console.error("Input is not a string.");
+    return ""; // Or return the input, or throw an error
+  }
+
+  // Trim whitespace from the input string
+  const trimmedName = fullNameWithLastFirst.trim();
+
+  // Find the position of the comma
+  const commaIndex = trimmedName.indexOf(',');
+
+  // If no comma is found, assume it's already in a non-standard format or a single name
+  if (commaIndex === -1) {
+    console.warn("No comma found in the name. Returning original string.");
+    return trimmedName;
+  }
+
+  // Split the string into last name and first/middle name parts
+  const lastNamePart = trimmedName.substring(0, commaIndex).trim();
+  const firstAndMiddleNamesPart = trimmedName.substring(commaIndex + 1).trim();
+
+  // If either part is empty after trimming (e.g., " , John" or "Smith, "),
+  // it might indicate an improperly formatted input.
+  if (!lastNamePart || !firstAndMiddleNamesPart) {
+    console.warn("Potentially malformed name string (empty last name or first/middle part). Returning original string.");
+    return trimmedName; // Or handle more gracefully
+  }
+
+  // Split the first and middle names part by space
+  const nameComponents = firstAndMiddleNamesPart.split(' ').filter(part => part !== ''); // Filter out empty strings if there are multiple spaces
+  const firstName = nameComponents[0];
+  let middleNames = "";
+
+  if (nameComponents.length > 1) {
+    middleNames = nameComponents.slice(1).join(' ');
+  }
+
+  // Construct the final name string without commas
+  if (middleNames) {
+    return `${firstName} ${middleNames} ${lastNamePart}`;
+  } else {
+    return `${firstName} ${lastNamePart}`;
+  }
 }
